@@ -38,7 +38,7 @@ export const loginUser = async (email: string, password: string) => {
   const user = await User.findOne({ email });
   if (!user) throw new Error("Invalid credentials");
 
-  const isMatch = await bcrypt.compare(password, user.password);
+  const isMatch = await bcrypt.compare(password, user.password!);
   if (!isMatch) throw new Error("Invalid credentials");
 
   const token = generateToken(user._id.toString(), user.role || "Receptionist");
