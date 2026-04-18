@@ -6,8 +6,10 @@ import morgan from 'morgan';
 const app = express();
 
 const allowedOrigins = [
-  'http://localhost:5173', // admin-front
-  'http://localhost:5174', // landing-page
+  'http://localhost:5173',                  // admin-front dev
+  'http://localhost:5174',                  // landing-page dev
+  'https://docmanag-landing.vercel.app',    // landing production
+  'https://docmanag-front-a3n1.vercel.app', // admin production
 ];
 
 app.use(cors({
