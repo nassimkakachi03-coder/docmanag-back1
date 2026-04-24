@@ -5,7 +5,9 @@ export const createAppointment = async (data: any) => {
 };
 
 export const getAppointments = async () => {
-  return await Appointment.find().sort({ createdAt: -1 });
+  return await Appointment.find()
+    .populate('patientId', 'firstName lastName')
+    .sort({ createdAt: -1 });
 };
 
 export const getAppointmentById = async (id: string) => {

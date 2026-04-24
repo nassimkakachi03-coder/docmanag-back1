@@ -10,6 +10,8 @@ router.use(authenticate);
 // Invoices
 router.post('/invoices', validateRequest(createInvoiceSchema), billingHandler.createInvoice);
 router.get('/invoices', billingHandler.getAllInvoices);
+router.put('/invoices/:id', billingHandler.updateInvoice);
+router.delete('/invoices/:id', billingHandler.deleteInvoice);
 
 // Payments
 router.post('/payments', validateRequest(createPaymentSchema), billingHandler.payInvoice);

@@ -1,11 +1,12 @@
-import { z } from "zod";
+import { z } from 'zod';
 
 export const createContactSchema = z.object({
   body: z.object({
-    name: z.string().min(2, "Name must be at least 2 characters"),
-    email: z.string().email("Invalid email address"),
-    phone: z.string().optional(),
-    subject: z.string().min(3, "Subject must be at least 3 characters"),
-    message: z.string().min(10, "Message must be at least 10 characters"),
+    firstName: z.string().trim().min(2, 'Le prénom doit contenir au moins 2 caractères'),
+    lastName: z.string().trim().min(2, 'Le nom doit contenir au moins 2 caractères'),
+    email: z.string().email('Adresse email invalide'),
+    phone: z.string().trim().optional().or(z.literal('')),
+    subject: z.string().trim().min(3, "L'objet doit contenir au moins 3 caractères").optional().or(z.literal('')),
+    message: z.string().trim().min(10, 'Le message doit contenir au moins 10 caractères'),
   }),
 });

@@ -2,10 +2,11 @@ import mongoose, { Schema, Document } from 'mongoose';
 
 export interface IInvoice extends Document {
   patientId: mongoose.Types.ObjectId;
+  patientName?: string;
   items: Array<{ description: string; cost: number }>;
   totalAmount: number;
   currency: string;
-  status: 'Pending' | 'Paid' | 'Cancelled';
+  status: 'Pending' | 'Paid' | 'Overdue' | 'Cancelled';
   createdAt: Date;
   updatedAt: Date;
 }
@@ -13,6 +14,7 @@ export interface IInvoice extends Document {
 const InvoiceSchema: Schema = new Schema(
   {
     patientId: { type: Schema.Types.ObjectId, ref: 'Patient', required: true },
+    patientName: { type: String, default: '' },
     items: [
       {
         description: { type: String, required: true },
@@ -20,10 +22,10 @@ const InvoiceSchema: Schema = new Schema(
       }
     ],
     totalAmount: { type: Number, required: true },
-    currency: { type: String, default: 'USD' }, // Supports multi-currency
+    currency: { type: String, enum: ['DZD'], default: 'DZD' },
     status: {
       type: String,
-      enum: ['Pending', 'Paid', 'Cancelled'],
+      enum: ['Pending', 'Paid', 'Overdue', 'Cancelled'],
       default: 'Pending'
     }
   },

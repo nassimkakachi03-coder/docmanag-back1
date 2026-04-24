@@ -15,7 +15,7 @@ const PaymentSchema: Schema = new Schema(
   {
     invoiceId: { type: Schema.Types.ObjectId, ref: 'Invoice', required: true },
     amount: { type: Number, required: true },
-    currency: { type: String, default: 'USD' },
+    currency: { type: String, enum: ['DZD'], default: 'DZD' },
     exchangeRate: { type: Number, default: 1 },
     method: {
       type: String,

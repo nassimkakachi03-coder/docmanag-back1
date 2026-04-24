@@ -4,7 +4,7 @@ export const errorHandler = (err: any, req: Request, res: Response, next: NextFu
   console.error(err.stack);
   
   res.status(err.status || 500).json({
-    message: err.message || 'Internal Server Error',
+    message: err.message || 'Erreur interne du serveur',
     stack: process.env.NODE_ENV === 'production' ? undefined : err.stack
   });
 };

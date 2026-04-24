@@ -33,7 +33,7 @@ export const remove = async (req: Request, res: Response, next: NextFunction): P
   try {
     const data = await inventoryService.deleteItem(req.params.id as string);
     if (!data) return res.status(404).json({ message: 'Item not found' });
-    return res.status(200).json({ message: 'Item deleted successfully' });
+    return res.status(200).json({ message: 'Article supprimé avec succès.' });
   } catch (error) {
     next(error);
   }

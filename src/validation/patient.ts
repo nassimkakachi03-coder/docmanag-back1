@@ -1,40 +1,46 @@
-import { z } from "zod";
+import { z } from 'zod';
+
+const optionalEmail = z.string().email('Adresse email invalide').optional().or(z.literal(''));
+const optionalDate = z
+  .string()
+  .refine((date) => {
+    if (!date) return true;
+    const parsedDate = new Date(date);
+    return !Number.isNaN(parsedDate.getTime()) && parsedDate <= new Date();
+  }, 'Date invalide')
+  .optional()
+  .or(z.literal(''));
 
 export const createPatientSchema = z.object({
   body: z.object({
-    firstName: z.string().min(2, "First name must be at least 2 characters"),
-    lastName: z.string().min(2, "Last name must be at least 2 characters"),
-    phone: z.string().min(10, "Phone number must be valid"),
-    email: z
-      .string()
-      .email("Invalid email address")
-      .optional()
-      .or(z.literal("")),
-    dateOfBirth: z.string().refine((date) => {
-      const d = new Date(date);
-      return !isNaN(d.getTime()) && d < new Date();
-    }, "Date of birth must be valid and in the past"),
-    gender: z.enum(["Male", "Female", ""]).optional(),
+    firstName: z.string().min(2, 'Le prénom doit contenir au moins 2 caractères'),
+    lastName: z.string().min(2, 'Le nom doit contenir au moins 2 caractères'),
+    phone: z.string().min(5, 'Numéro de téléphone invalide'),
+    email: optionalEmail,
+    source: z.enum(['admin', 'landing', 'patient-portal']).optional(),
+    dateOfBirth: optionalDate,
+    gender: z.enum(['Male', 'Female', '']).optional(),
     address: z.string().optional(),
     medicalHistory: z.string().optional(),
+    caseSummary: z.string().optional(),
+    careNotes: z.string().optional(),
+    xRayUrl: z.string().optional(),
   }),
 });
 
 export const updatePatientSchema = z.object({
   body: z.object({
-    firstName: z
-      .string()
-      .min(2, "First name must be at least 2 characters")
-      .optional(),
-    lastName: z
-      .string()
-      .min(2, "Last name must be at least 2 characters")
-      .optional(),
-    phone: z.string().min(10, "Phone number must be valid").optional(),
-    email: z.string().email("Invalid email address").optional(),
-    dateOfBirth: z.string().optional(),
-    gender: z.enum(["Male", "Female", ""]).optional(),
+    firstName: z.string().min(2).optional(),
+    lastName: z.string().min(2).optional(),
+    phone: z.string().min(5).optional(),
+    email: optionalEmail,
+    source: z.enum(['admin', 'landing', 'patient-portal']).optional(),
+    dateOfBirth: optionalDate,
+    gender: z.enum(['Male', 'Female', '']).optional(),
     address: z.string().optional(),
     medicalHistory: z.string().optional(),
+    caseSummary: z.string().optional(),
+    careNotes: z.string().optional(),
+    xRayUrl: z.string().optional(),
   }),
 });

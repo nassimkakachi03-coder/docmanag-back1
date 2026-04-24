@@ -6,6 +6,7 @@ export interface IInventoryItem extends Document {
   unit: string;
   threshold: number;
   supplier: string;
+  category: string;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -17,7 +18,7 @@ const InventoryItemSchema: Schema = new Schema(
     unit: { type: String, required: true }, // e.g., "boxes", "pieces", "bottles"
     threshold: { type: Number, required: true, default: 5 }, // when to alert low stock
     supplier: { type: String, default: '' },
-    category: { type: String, default: 'Consommables' },
+    category: { type: String, default: 'Consommables', enum: ['Chirurgie', 'Orthodontie', 'Consommables', 'Hygiène', 'Médicaments', 'Prothèses'] },
   },
   { timestamps: true }
 );
