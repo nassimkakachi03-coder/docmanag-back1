@@ -181,13 +181,13 @@ export const createAppointment = async (req: Request, res: Response, next: NextF
       date: appointmentDate,
       reason: reason.trim(),
       notes: notes?.trim() || 'Rendez-vous pris en ligne par le patient',
-      status: 'Scheduled',
+      status: 'Pending',
       duration: 30,
     });
 
     // Create Notification
     await Notification.create({
-      title: 'Nouveau rendez-vous',
+      title: 'Nouvelle demande de rendez-vous',
       message: `${patientName} a demandé un rendez-vous le ${appointmentDate.toLocaleDateString('fr-FR')} pour le motif : ${reason}.`,
       type: 'NewAppointment',
       link: `/agenda`
@@ -226,6 +226,14 @@ export const updateMedicalProfile = async (req: Request, res: Response, next: Ne
     );
 
     if (!patient) return res.status(404).json({ message: 'Patient non trouvé.' });
+
+    // Create Notification if profile updated
+    await Notification.create({
+      title: 'Mise à jour du dossier médical',
+      message: `${patient.firstName} ${patient.lastName} vient d'ajouter de nouvelles informations ou documents (radio/ordonnance) à son dossier.`,
+      type: 'ProfileUpdate',
+      link: `/patients/${patient._id}`
+    });
 
     return res.status(200).json({
       message: 'Dossier médical mis à jour avec succès.',
