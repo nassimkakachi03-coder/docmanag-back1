@@ -5,30 +5,23 @@ import morgan from 'morgan';
 
 const app = express();
 
-const allowedOrigins = [
-  'http://localhost:5173',                  // admin-front dev
-  'http://localhost:5174',                  // landing-page dev
-  'https://docmanag-landing.vercel.app',    // landing production
-  'https://docmanag-front-a3n1.vercel.app', // admin production
-];
+const allowedOrigins = (process.env.CORS_ORIGINS || "http://localhost:5173")
+  .split(",")
+  .map((o) => o.trim());
 
-const dynamicOrigins = (process.env.CORS_ORIGINS || '')
-  .split(',')
-  .map((origin) => origin.trim())
-  .filter(Boolean);
-
-app.use(cors({
-  origin: (origin, callback) => {
-    const isLocalhost = !!origin && /^https?:\/\/localhost:\d+$/.test(origin);
-    const isAllowed = !!origin && (allowedOrigins.includes(origin) || dynamicOrigins.includes(origin));
-    if (!origin || isLocalhost || isAllowed) {
-      callback(null, true);
-    } else {
-      callback(new Error('Not allowed by CORS'))
-    }
-  },
-  credentials: true,
-}));
+app.use(
+  cors({
+    origin: (origin, callback) => {
+      // Allow requests with no origin (e.g. mobile/curl) or matching origins
+      if (!origin || allowedOrigins.includes(origin)) {
+        callback(null, true);
+      } else {
+        callback(new Error(`CORS: origin ${origin} not allowed`));
+      }
+    },
+    credentials: true,
+  }),
+);
 app.use(helmet());
 app.use(morgan('dev'));
 app.use(express.json({ limit: '10mb' }));
