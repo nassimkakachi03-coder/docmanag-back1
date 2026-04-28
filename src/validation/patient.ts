@@ -25,6 +25,7 @@ export const createPatientSchema = z.object({
     caseSummary: z.string().optional(),
     careNotes: z.string().optional(),
     xRayUrl: z.string().optional(),
+    prescriptionUrl: z.string().optional(),
   }),
 });
 
@@ -42,5 +43,6 @@ export const updatePatientSchema = z.object({
     caseSummary: z.string().optional(),
     careNotes: z.string().optional(),
     xRayUrl: z.string().optional(),
+    prescriptionUrl: z.string().optional(),
   }),
 });

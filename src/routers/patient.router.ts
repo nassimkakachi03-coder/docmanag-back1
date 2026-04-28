@@ -13,6 +13,8 @@ router.use(authenticate);
 
 router.post('/', validateRequest(createPatientSchema), patientHandler.create);
 router.get('/', patientHandler.getAll);
+router.get('/archives', patientHandler.getArchivedAll);
+router.get('/archives/:archiveId', patientHandler.getArchivedOne);
 router.get('/:id/history', patientHistoryHandler.getPatientHistory);
 router.get('/:id', patientHandler.getOne);
 router.put('/:id', validateRequest(updatePatientSchema), patientHandler.update);

@@ -1,11 +1,12 @@
 import { NextFunction, Request, Response } from 'express';
 import bcrypt from 'bcrypt';
-import PatientAccount from '../models/patientAccount.js';
-import Patient from '../models/patient.js';
 import Appointment from '../models/appointment.js';
+import Notification from '../models/notification.js';
+import Patient from '../models/patient.js';
+import PatientAccount from '../models/patientAccount.js';
 import { buildPatientHistory } from '../services/patientHistory.service.js';
 import { generateToken } from '../utils/jwt.js';
-import Notification from '../models/notification.js';
+import { validatePatientAppointmentSlot } from '../utils/patientAppointmentRules.js';
 
 export const register = async (req: Request, res: Response, next: NextFunction): Promise<any> => {
   try {
@@ -18,7 +19,7 @@ export const register = async (req: Request, res: Response, next: NextFunction):
     const normalizedEmail = email.toLowerCase();
     const existing = await PatientAccount.findOne({ email: normalizedEmail });
     if (existing) {
-      return res.status(400).json({ message: 'Un compte avec cet email existe déjà.' });
+      return res.status(400).json({ message: 'Un compte avec cet email existe deja.' });
     }
 
     const hashedPassword = await bcrypt.hash(password, 10);
@@ -58,17 +59,16 @@ export const register = async (req: Request, res: Response, next: NextFunction):
     await patient.save();
 
     const token = generateToken(account._id.toString(), 'Patient');
-    
-    // Create Notification
+
     await Notification.create({
       title: 'Nouveau patient inscrit',
-      message: `${firstName} ${lastName} vient de créer son espace patient en ligne.`,
+      message: `${firstName} ${lastName} vient de creer son espace patient en ligne.`,
       type: 'NewPatient',
-      link: `/patients/${patient._id}`
+      link: `/patients/${patient._id}/history`,
     });
 
     return res.status(201).json({
-      message: 'Compte créé avec succès.',
+      message: 'Compte cree avec succes.',
       token,
       user: {
         id: account._id,
@@ -102,7 +102,7 @@ export const login = async (req: Request, res: Response, next: NextFunction): Pr
 
     const token = generateToken(account._id.toString(), 'Patient');
     return res.status(200).json({
-      message: 'Connexion réussie.',
+      message: 'Connexion reussie.',
       token,
       user: {
         id: account._id,
@@ -121,7 +121,7 @@ export const getMe = async (req: Request, res: Response, next: NextFunction): Pr
   try {
     const authReq = req as any;
     const account = await PatientAccount.findById(authReq.user?.id).select('-password');
-    if (!account) return res.status(404).json({ message: 'Compte non trouvé.' });
+    if (!account) return res.status(404).json({ message: 'Compte non trouve.' });
     return res.status(200).json(account);
   } catch (error) {
     next(error);
@@ -132,15 +132,15 @@ export const getMyHistory = async (req: Request, res: Response, next: NextFuncti
   try {
     const authReq = req as any;
     if (authReq.user?.role !== 'Patient') {
-      return res.status(403).json({ message: 'Accès refusé.' });
+      return res.status(403).json({ message: 'Acces refuse.' });
     }
 
     const account = await PatientAccount.findById(authReq.user?.id).select('-password');
-    if (!account) return res.status(404).json({ message: 'Compte non trouvé.' });
+    if (!account) return res.status(404).json({ message: 'Compte non trouve.' });
     if (!account.patientId) return res.status(404).json({ message: 'Dossier patient introuvable.' });
 
     const history = await buildPatientHistory(account.patientId.toString());
-    if (!history) return res.status(404).json({ message: 'Patient non trouvé.' });
+    if (!history) return res.status(404).json({ message: 'Patient non trouve.' });
 
     return res.status(200).json({
       account,
@@ -155,11 +155,11 @@ export const createAppointment = async (req: Request, res: Response, next: NextF
   try {
     const authReq = req as any;
     if (authReq.user?.role !== 'Patient') {
-      return res.status(403).json({ message: 'Accès refusé.' });
+      return res.status(403).json({ message: 'Acces refuse.' });
     }
 
     const account = await PatientAccount.findById(authReq.user?.id).select('-password');
-    if (!account) return res.status(404).json({ message: 'Compte non trouvé.' });
+    if (!account) return res.status(404).json({ message: 'Compte non trouve.' });
     if (!account.patientId) return res.status(404).json({ message: 'Dossier patient introuvable.' });
 
     const { date, reason, notes } = req.body;
@@ -168,8 +168,9 @@ export const createAppointment = async (req: Request, res: Response, next: NextF
     }
 
     const appointmentDate = new Date(date);
-    if (isNaN(appointmentDate.getTime()) || appointmentDate <= new Date()) {
-      return res.status(400).json({ message: 'La date doit être dans le futur.' });
+    const slotError = validatePatientAppointmentSlot(appointmentDate, reason);
+    if (slotError) {
+      return res.status(400).json({ message: slotError });
     }
 
     const patient = await Patient.findById(account.patientId);
@@ -184,16 +185,15 @@ export const createAppointment = async (req: Request, res: Response, next: NextF
       status: 'EnCours',
     });
 
-    // Create Notification
     await Notification.create({
       title: 'Nouvelle demande de rendez-vous',
-      message: `${patientName} a demandé un rendez-vous le ${appointmentDate.toLocaleDateString('fr-FR')} pour le motif : ${reason}.`,
+      message: `${patientName} a demande un rendez-vous le ${appointmentDate.toLocaleDateString('fr-FR')} pour le motif : ${reason}.`,
       type: 'NewAppointment',
-      link: `/agenda`
+      link: '/agenda',
     });
 
     return res.status(201).json({
-      message: 'Rendez-vous créé avec succès. Le cabinet vous contactera pour confirmer.',
+      message: 'Rendez-vous cree avec succes. Le cabinet vous contactera pour confirmer.',
       appointment,
     });
   } catch (error) {
@@ -205,42 +205,41 @@ export const updateMedicalProfile = async (req: Request, res: Response, next: Ne
   try {
     const authReq = req as any;
     if (authReq.user?.role !== 'Patient') {
-      return res.status(403).json({ message: 'Accès refusé.' });
+      return res.status(403).json({ message: 'Acces refuse.' });
     }
 
     const account = await PatientAccount.findById(authReq.user?.id).select('-password');
-    if (!account) return res.status(404).json({ message: 'Compte non trouvé.' });
+    if (!account) return res.status(404).json({ message: 'Compte non trouve.' });
     if (!account.patientId) return res.status(404).json({ message: 'Dossier patient introuvable.' });
 
     const { medicalHistory, xRayUrl, prescriptionUrl } = req.body;
 
     const patient = await Patient.findByIdAndUpdate(
       account.patientId,
-      { 
+      {
         ...(medicalHistory !== undefined && { medicalHistory }),
         ...(xRayUrl !== undefined && { xRayUrl: xRayUrl.trim() }),
-        ...(prescriptionUrl !== undefined && { prescriptionUrl: prescriptionUrl.trim() })
+        ...(prescriptionUrl !== undefined && { prescriptionUrl: prescriptionUrl.trim() }),
       },
       { new: true }
     );
 
-    if (!patient) return res.status(404).json({ message: 'Patient non trouvé.' });
+    if (!patient) return res.status(404).json({ message: 'Patient non trouve.' });
 
-    // Create Notification if profile updated
     await Notification.create({
-      title: 'Mise à jour du dossier médical',
-      message: `${patient.firstName} ${patient.lastName} vient d'ajouter de nouvelles informations ou documents (radio/ordonnance) à son dossier.`,
+      title: 'Mise a jour du dossier medical',
+      message: `${patient.firstName} ${patient.lastName} vient d'ajouter de nouvelles informations ou documents a son dossier.`,
       type: 'ProfileUpdate',
-      link: `/patients/${patient._id}`
+      link: `/patients/${patient._id}/history`,
     });
 
     return res.status(200).json({
-      message: 'Dossier médical mis à jour avec succès.',
+      message: 'Dossier medical mis a jour avec succes.',
       patient: {
         medicalHistory: patient.medicalHistory,
         xRayUrl: patient.xRayUrl,
         prescriptionUrl: patient.prescriptionUrl,
-      }
+      },
     });
   } catch (error) {
     next(error);

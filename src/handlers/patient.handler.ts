@@ -23,10 +23,29 @@ export const getAll = async (req: Request, res: Response, next: NextFunction): P
   }
 };
 
+export const getArchivedAll = async (req: Request, res: Response, next: NextFunction): Promise<any> => {
+  try {
+    const archives = await patientService.getArchivedPatients();
+    return res.status(200).json(archives);
+  } catch (error) {
+    next(error);
+  }
+};
+
+export const getArchivedOne = async (req: Request, res: Response, next: NextFunction): Promise<any> => {
+  try {
+    const archive = await patientService.getArchivedPatientById(req.params.archiveId as string);
+    if (!archive) return res.status(404).json({ message: 'Archive introuvable.' });
+    return res.status(200).json(archive);
+  } catch (error) {
+    next(error);
+  }
+};
+
 export const getOne = async (req: Request, res: Response, next: NextFunction): Promise<any> => {
   try {
     const patient = await patientService.getPatientById(req.params.id as string);
-    if (!patient) return res.status(404).json({ message: 'Patient non trouvé.' });
+    if (!patient) return res.status(404).json({ message: 'Patient non trouve.' });
     return res.status(200).json(patient);
   } catch (error) {
     next(error);
@@ -36,7 +55,7 @@ export const getOne = async (req: Request, res: Response, next: NextFunction): P
 export const update = async (req: Request, res: Response, next: NextFunction): Promise<any> => {
   try {
     const patient = await patientService.updatePatient(req.params.id as string, req.body);
-    if (!patient) return res.status(404).json({ message: 'Patient non trouvé.' });
+    if (!patient) return res.status(404).json({ message: 'Patient non trouve.' });
     return res.status(200).json(patient);
   } catch (error) {
     next(error);
@@ -45,9 +64,10 @@ export const update = async (req: Request, res: Response, next: NextFunction): P
 
 export const remove = async (req: Request, res: Response, next: NextFunction): Promise<any> => {
   try {
-    const patient = await patientService.deletePatient(req.params.id as string);
-    if (!patient) return res.status(404).json({ message: 'Patient non trouvé.' });
-    return res.status(200).json({ message: 'Patient supprimé avec succès.' });
+    const authReq = req as any;
+    const patient = await patientService.deletePatient(req.params.id as string, authReq.user);
+    if (!patient) return res.status(404).json({ message: 'Patient non trouve.' });
+    return res.status(200).json({ message: 'Patient archive avec succes.' });
   } catch (error) {
     next(error);
   }

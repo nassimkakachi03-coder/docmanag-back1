@@ -1,5 +1,10 @@
+import Appointment from '../models/appointment.js';
+import ArchivedPatient from '../models/archivedPatient.js';
+import Invoice from '../models/invoice.js';
 import Patient from '../models/patient.js';
 import PatientAccount from '../models/patientAccount.js';
+import Payment from '../models/payment.js';
+import Prescription from '../models/prescription.js';
 
 const normalizeText = (value: unknown) => (typeof value === 'string' ? value.trim() : '');
 const normalizeEmail = (value: unknown) => normalizeText(value).toLowerCase();
@@ -17,6 +22,8 @@ const resolveAccountId = async (email: string) => {
   const account = await PatientAccount.findOne({ email }).select('_id');
   return account?._id;
 };
+
+const toPlainObject = (document: any) => (document ? document.toObject({ depopulate: true }) : null);
 
 const findExistingPatient = async (data: {
   email?: string;
@@ -54,6 +61,7 @@ export const createPatient = async (data: any) => {
     caseSummary: normalizeText(data.caseSummary),
     careNotes: normalizeText(data.careNotes),
     xRayUrl: normalizeText(data.xRayUrl),
+    prescriptionUrl: normalizeText(data.prescriptionUrl),
   };
 
   const existingPatient = await findExistingPatient(payload);
@@ -71,6 +79,7 @@ export const createPatient = async (data: any) => {
     existingPatient.caseSummary = appendUniqueNote(existingPatient.caseSummary || '', payload.caseSummary || '');
     existingPatient.careNotes = appendUniqueNote(existingPatient.careNotes || '', payload.careNotes || '');
     existingPatient.xRayUrl = payload.xRayUrl || existingPatient.xRayUrl;
+    existingPatient.prescriptionUrl = payload.prescriptionUrl || existingPatient.prescriptionUrl;
     if (payload.dateOfBirth) existingPatient.dateOfBirth = payload.dateOfBirth;
     if (accountId) existingPatient.accountId = accountId;
     await existingPatient.save();
@@ -106,9 +115,79 @@ export const updatePatient = async (id: string, data: any) => {
   if (data.caseSummary !== undefined) patient.caseSummary = normalizeText(data.caseSummary);
   if (data.careNotes !== undefined) patient.careNotes = normalizeText(data.careNotes);
   if (data.xRayUrl !== undefined) patient.xRayUrl = normalizeText(data.xRayUrl);
+  if (data.prescriptionUrl !== undefined) patient.prescriptionUrl = normalizeText(data.prescriptionUrl);
 
   await patient.save();
   return patient;
 };
 
-export const deletePatient = async (id: string) => Patient.findByIdAndDelete(id);
+export const getArchivedPatients = async () => {
+  const archives = await ArchivedPatient.find().sort({ deletedAt: -1, createdAt: -1 });
+
+  return archives.map((archive) => ({
+    _id: archive._id,
+    patient: {
+      firstName: archive.patient?.firstName || '',
+      lastName: archive.patient?.lastName || '',
+      phone: archive.patient?.phone || '',
+      email: archive.patient?.email || '',
+      source: archive.patient?.source || '',
+    },
+    stats: archive.stats,
+    deletedAt: archive.deletedAt,
+    deletedBy: archive.deletedBy,
+  }));
+};
+
+export const getArchivedPatientById = async (id: string) => ArchivedPatient.findById(id);
+
+export const deletePatient = async (id: string, deletedBy?: { id?: string; role?: string }) => {
+  const patient = await Patient.findById(id);
+  if (!patient) return null;
+
+  const [appointments, prescriptions, invoices, linkedAccount] = await Promise.all([
+    Appointment.find({ patientId: id }).sort({ date: -1, createdAt: -1 }),
+    Prescription.find({ patientId: id }).sort({ date: -1, createdAt: -1 }),
+    Invoice.find({ patientId: id }).sort({ createdAt: -1 }),
+    patient.accountId
+      ? PatientAccount.findById(patient.accountId)
+      : PatientAccount.findOne({ patientId: patient._id }),
+  ]);
+
+  const invoiceIds = invoices.map((invoice) => invoice._id);
+  const payments = invoiceIds.length
+    ? await Payment.find({ invoiceId: { $in: invoiceIds } }).sort({ date: -1, createdAt: -1 })
+    : [];
+
+  await ArchivedPatient.create({
+    originalPatientId: patient._id.toString(),
+    patient: toPlainObject(patient),
+    account: toPlainObject(linkedAccount),
+    appointments: appointments.map((appointment) => toPlainObject(appointment)),
+    prescriptions: prescriptions.map((prescription) => toPlainObject(prescription)),
+    invoices: invoices.map((invoice) => toPlainObject(invoice)),
+    payments: payments.map((payment) => toPlainObject(payment)),
+    deletedAt: new Date(),
+    deletedBy: {
+      userId: deletedBy?.id || '',
+      role: deletedBy?.role || '',
+    },
+    stats: {
+      appointmentCount: appointments.length,
+      prescriptionCount: prescriptions.length,
+      invoiceCount: invoices.length,
+      paymentCount: payments.length,
+    },
+  });
+
+  await Promise.all([
+    payments.length ? Payment.deleteMany({ _id: { $in: payments.map((payment) => payment._id) } }) : Promise.resolve(),
+    invoiceIds.length ? Invoice.deleteMany({ _id: { $in: invoiceIds } }) : Promise.resolve(),
+    Prescription.deleteMany({ patientId: id }),
+    Appointment.deleteMany({ patientId: id }),
+    linkedAccount ? PatientAccount.deleteOne({ _id: linkedAccount._id }) : PatientAccount.deleteMany({ patientId: patient._id }),
+    Patient.deleteOne({ _id: patient._id }),
+  ]);
+
+  return patient;
+};
