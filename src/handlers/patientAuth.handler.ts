@@ -181,8 +181,7 @@ export const createAppointment = async (req: Request, res: Response, next: NextF
       date: appointmentDate,
       reason: reason.trim(),
       notes: notes?.trim() || 'Rendez-vous pris en ligne par le patient',
-      status: 'Pending',
-      duration: 30,
+      status: 'EnCours',
     });
 
     // Create Notification

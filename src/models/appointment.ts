@@ -6,8 +6,7 @@ export interface IAppointment extends Document {
   patientName?: string;
   date: Date;
   reason?: string;
-  duration?: number;
-  status: 'Scheduled' | 'Completed' | 'Cancelled' | 'Pending';
+  status: 'EnCours' | 'Termine';
   notes?: string;
   createdAt: Date;
   updatedAt: Date;
@@ -20,11 +19,10 @@ const AppointmentSchema: Schema = new Schema(
     patientName: { type: String, default: '' },
     date: { type: Date, required: true },
     reason: { type: String, default: '' },
-    duration: { type: Number, default: 30 },
     status: {
       type: String,
-      enum: ['Scheduled', 'Completed', 'Cancelled', 'Pending'],
-      default: 'Pending'
+      enum: ['EnCours', 'Termine'],
+      default: 'EnCours'
     },
     notes: { type: String, default: '' }
   },
